@@ -6,17 +6,29 @@ import { TaskForm } from './TaskForm';
 import { LoginForm } from './LoginForm';
 
 export const App = () => {
-  
+
   const user = useTracker(() => Meteor.user());
+  const logout = () => Meteor.logout();
   // react hook for completed tasks #Boolean
   const [hideCompleted, setHideCompleted] = useState(false);
+  // filter configuration
   const hideCompletedFilter = { isChecked: { $ne: true } };
+  const userFilter = user ? { userId: user._id } : {};
+  //filter on pending and user
+  const pendingOnlyFilter = { ...hideCompletedFilter, ...userFilter };
   //get collection and sort it , starting from the most recent one
-  const tasks = useTracker(() =>
-    TasksCollection.find(hideCompleted ? hideCompletedFilter : {}, {
-      sort: { createdAt: -1 },
-    }).fetch()
-  );
+  const tasks = useTracker(() => {
+    if (!user) {
+      return [];
+    }
+
+    return TasksCollection.find(
+      hideCompleted ? pendingOnlyFilter : userFilter,
+      {
+        sort: { createdAt: -1 },
+      }
+    ).fetch();
+  });
   //delete the task using it ID
   const deleteTask = ({ _id }) => TasksCollection.remove(_id);
   //set the isChecked property of the task by his id
@@ -28,11 +40,17 @@ export const App = () => {
     })
   };
   //count remaning tasks
-  const pendingTasksCount = useTracker(() =>
-    TasksCollection.find(hideCompletedFilter).count()
-  );
+  const pendingTasksCount = useTracker(() => {
+    if (!user) {
+      return 0;
+    }
+
+    return TasksCollection.find(pendingOnlyFilter).count();
+  });
+  //show pending tasks if exists 
   const pendingTasksTitle = `${pendingTasksCount ? ` (${pendingTasksCount})` : ''
     }`;
+
   return (
     <div className="app">
       <header>
@@ -49,7 +67,10 @@ export const App = () => {
       <div className="main">
         {user ? (
           <Fragment>
-            <TaskForm />
+            <div className="user" onClick={logout}>
+              {user.username} 🚪
+            </div>  
+            <TaskForm user={user} />
 
             <div className="filter">
               <button onClick={() => setHideCompleted(!hideCompleted)}>

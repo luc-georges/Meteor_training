@@ -172,3 +172,9 @@ header {
   background-color: #000000;
 
 }
+.user {
+  display: flex;
+  align-self: flex-end;
+  margin: 8px 16px 0;
+  font-weight: bold;
+}
