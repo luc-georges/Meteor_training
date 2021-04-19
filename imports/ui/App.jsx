@@ -6,43 +6,53 @@ import { Task } from './Task';
 import { TaskForm } from './TaskForm';
 import { LoginForm } from './LoginForm';
 
+  //delete the task using it ID
+  const deleteTask = ({ _id }) => Meteor.call('tasks.remove', _id);
+  //set the isChecked property of the task by his id
+  const toggleChecked = ({ _id, isChecked }) =>
+  Meteor.call('tasks.setIsChecked', _id, !isChecked);
+
 export const App = () => {
 
   const user = useTracker(() => Meteor.user());
   const logout = () => Meteor.logout();
   // react hook for completed tasks #Boolean
   const [hideCompleted, setHideCompleted] = useState(false);
+
   // filter configuration
   const hideCompletedFilter = { isChecked: { $ne: true } };
+
   const userFilter = user ? { userId: user._id } : {};
+
   //filter on pending and user
   const pendingOnlyFilter = { ...hideCompletedFilter, ...userFilter };
   //get collection and sort it , starting from the most recent one
-  const tasks = useTracker(() => {
-    if (!user) {
-      return [];
+
+  const { tasks, pendingTasksCount, isLoading } = useTracker(() => {
+    const noDataAvailable = { tasks: [], pendingTasksCount: 0 };
+    if (!Meteor.user()) {
+      return noDataAvailable;
+    }
+    const handler = Meteor.subscribe('tasks');
+    //set loading if not ready
+    if (!handler.ready()) {
+      return { ...noDataAvailable, isLoading: true };
     }
 
-    return TasksCollection.find(
+    const tasks = TasksCollection.find(
       hideCompleted ? pendingOnlyFilter : userFilter,
       {
         sort: { createdAt: -1 },
       }
     ).fetch();
-  });
-  //delete the task using it ID
-  const deleteTask = ({ _id }) => Meteor.call('tasks.remove', _id);
-  //set the isChecked property of the task by his id
-  const toggleChecked = ({ _id, isChecked }) =>
-  Meteor.call('tasks.setIsChecked', _id, !isChecked);
-  //count remaning tasks
-  const pendingTasksCount = useTracker(() => {
-    if (!user) {
-      return 0;
-    }
+      //count remaning tasks
+    const pendingTasksCount = TasksCollection.find(pendingOnlyFilter).count();
 
-    return TasksCollection.find(pendingOnlyFilter).count();
+    return { tasks, pendingTasksCount };
   });
+
+
+
   //show pending tasks if exists 
   const pendingTasksTitle = `${pendingTasksCount ? ` (${pendingTasksCount})` : ''
     }`;
@@ -73,6 +83,8 @@ export const App = () => {
                 {hideCompleted ? 'Show All' : 'Hide Completed'}
               </button>
             </div>
+
+            {isLoading && <div className="loading">loading...</div>}
 
             <ul className="tasks">
               {tasks.map(task => (
