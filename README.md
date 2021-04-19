@@ -1,2 +1,2 @@
 # Meteorjs Training
-Todo List app realised as a meteor training 
+Todo List app done as a meteor training 
